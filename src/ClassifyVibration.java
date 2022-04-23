@@ -2,6 +2,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.format.DateTimeFormatter;  
+import java.time.LocalDateTime;
 
 import java.io.ObjectOutputStream;
 import java.io.ObjectInputStream;
@@ -23,6 +25,9 @@ public class ClassifyVibration extends PApplet {
 	static int DEVICE_ID = 9;
 	static int DISPLAY_LENGTH = 50;
 	static int WINDOW_SIZE = 7;
+	static String TRAINING_DATA_FILENAME = ""; // Uses tempTrainingData if not defined
+
+	String tempTrainingData;
 
 	String[] classNames = {"quiet", "rock", "paper", "scissors"};
 
@@ -36,6 +41,7 @@ public class ClassifyVibration extends PApplet {
 	float[] fftFeatures = new float[bands];
 	int classIndex = 0;
 	int dataCount = 0;
+
 
 	String prevOutput = "";
 	int currCountDisplay = 0;
@@ -76,7 +82,7 @@ public class ClassifyVibration extends PApplet {
 		Sound s = new Sound(this);
 		  
 		/* select microphone device */
-		print("Using device ID: " + DEVICE_ID);
+		println("Using device ID: " + DEVICE_ID);
 		s.inputDevice(DEVICE_ID);
 		    
 		/* create an Input stream which is routed into the FFT analyzer */
@@ -194,57 +200,68 @@ public class ClassifyVibration extends PApplet {
 		
 		else if (key == 's') {
 			// Yang: add code to save your trained model for later use
-			print("saving model");
+			println("Saving model");
  			try {
- 			    saveModel(classifier, "myClassifier");
+             	println("s key pressed");
+ 			    saveModel(trainingData);
              }
              catch (Exception e) {
-             	print("s key pressed");
-				print(e);
+				println(e);
              }
 		}
 		
 		else if (key == 'l') {
 			// Yang: add code to load your previously trained model
 			try {
- 			    classifier = loadModel("myClassifier");
+             	println("l key pressed");
+ 			    trainingData = loadModel(TRAINING_DATA_FILENAME);
+				classifier = new MLClassifier();
+				classifier.train(trainingData);
              }
              catch (Exception e) {
-             	print("l key pressed");
-				print(e);
+				println(e);
              }
 		} else {
 			trainingData.get(classNames[classIndex]).add(captureInstance(classNames[classIndex]));
 		}
 	}
 
-	public static void saveModel(MLClassifier classifier, String name) throws Exception {
+	public void saveModel(Map<String, List<DataInstance>> trainingData) throws Exception {
 		// TODO maybe store training data instead of non-serializable classifier object
 		// load the classifier by retraining the model from scratch
-         ObjectOutputStream oos = null;
-         try {
-             oos = new ObjectOutputStream(new FileOutputStream("./" + name + ".model"));
-         } catch (FileNotFoundException e1) {
-             e1.printStackTrace();
-         } catch (IOException e1) {
-             e1.printStackTrace();
-         }
-         oos.writeObject(classifier.classifier);
-         oos.flush();
-         oos.close();
+     	DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss");  
+		LocalDateTime now = LocalDateTime.now();  
+
+		ObjectOutputStream oos = null;
+		String filename = "./trainingData/" + dtf.format(now) + ".trainingdata";
+		try {
+			oos = new ObjectOutputStream(new FileOutputStream(filename));
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		oos.writeObject(trainingData);
+		oos.flush();
+		oos.close();
+		println("Saved training data to "+ filename);
+		tempTrainingData = filename;
      }
 
-     private static MLClassifier loadModel(String name) throws Exception {
+     private Map<String, List<DataInstance>> loadModel(String filename) throws Exception {
+		Map<String, List<DataInstance>> trainingData;
 
-	     MLClassifier classifier;
+		if (filename == null || filename == "") {
+			filename = tempTrainingData;
+		}
 
-	     FileInputStream fis = new FileInputStream("./" + name + ".model");
-	     ObjectInputStream ois = new ObjectInputStream(fis);
+		FileInputStream fis = new FileInputStream(filename);
+		ObjectInputStream ois = new ObjectInputStream(fis);
 
-	     classifier = (MLClassifier) ois.readObject();
-	     ois.close();
-
-	     return classifier;
+		trainingData = (Map<String, List<DataInstance>>) ois.readObject();
+		ois.close();
+		println("Loaded training data from " + filename);
+		return trainingData;
 	 }
 
 
