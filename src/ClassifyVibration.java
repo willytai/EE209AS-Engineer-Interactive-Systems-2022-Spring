@@ -17,6 +17,9 @@ public class ClassifyVibration extends PApplet {
     static int DISPLAY_LENGTH = 50;
     static int WINDOW_SIZE = 7;
     static String TRAINING_DATA_FILENAME = ""; // Uses tempTrainingData if not defined
+    public String[] setClassNames() {
+        return new String[]{"quiet", "rock", "paper"};
+    }
 
     String tempTrainingData;
 
@@ -238,9 +241,6 @@ public class ClassifyVibration extends PApplet {
         return trainingData;
     }
 
-    public String[] setClassNames() {
-        return new String[]{"quiet", "rock", "paper"};
-    }
     public void loadClasses(String[] classNames) {
         for (String value : classNames) {
             windowMap.put(value, 0);

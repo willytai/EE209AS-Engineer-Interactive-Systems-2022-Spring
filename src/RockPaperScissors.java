@@ -19,6 +19,7 @@ public class RockPaperScissors extends ClassifyVibration {
         PApplet.main("RockPaperScissors");
     }
 
+    // TODO add state machine for p1->p2->result->reset and announce each step
 
     @Override
     public void draw() {
