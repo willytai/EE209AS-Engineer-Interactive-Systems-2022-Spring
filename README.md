@@ -14,4 +14,4 @@ To compile: `./compile.sh RockPaperScissors`
 To run: `./run.sh RockPaperScissors`
 
 
-Training data saved under `/trainingData` in datetime format and can be reloaded to train new model
+Training data saved under `trainingData/` in datetime format and can be reloaded to train new model

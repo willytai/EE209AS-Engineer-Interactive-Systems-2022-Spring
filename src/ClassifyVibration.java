@@ -16,7 +16,11 @@ public class ClassifyVibration extends PApplet {
     static int DEVICE_ID = 9;
     static int DISPLAY_LENGTH = 50;
     static int WINDOW_SIZE = 7;
-    static String TRAINING_DATA_FILENAME = ""; // Uses tempTrainingData if not defined
+    public String setTrainingDataFilename() { // Uses tempTrainingData if not defined
+        return "";
+//        return "./trainingData/ClassifyVibration_2022_04_23_16_33_24.trainingdata";
+    }
+
     public String[] setClassNames() {
         return new String[]{"quiet", "rock", "paper"};
     }
@@ -24,6 +28,7 @@ public class ClassifyVibration extends PApplet {
     String tempTrainingData;
 
     String[] classNames;
+    String trainingDataFilename;
 
     FFT fft;
     AudioIn in;
@@ -64,6 +69,8 @@ public class ClassifyVibration extends PApplet {
 
     public void setup() {
         classNames = setClassNames();
+        trainingDataFilename = setTrainingDataFilename();
+
         loadClasses(classNames);
         /* list all audio devices */
         Sound.list();
@@ -195,11 +202,12 @@ public class ClassifyVibration extends PApplet {
             // Yang: add code to load your previously trained model
             try {
                 println("l key pressed");
-                trainingData = loadModel(TRAINING_DATA_FILENAME);
+                trainingData = loadModel(trainingDataFilename);
                 classifier = new MLClassifier();
                 classifier.train(trainingData);
+                println("Model loaded from " + trainingDataFilename);
             } catch (Exception e) {
-                println(e);
+                e.printStackTrace();
             }
         } else {
             trainingData.get(classNames[classIndex]).add(captureInstance(classNames[classIndex]));
@@ -207,11 +215,11 @@ public class ClassifyVibration extends PApplet {
     }
 
     public void saveModel(Map<String, List<DataInstance>> trainingData) throws Exception {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("_yyyy_MM_dd_HH_mm_ss");
         LocalDateTime now = LocalDateTime.now();
 
         ObjectOutputStream oos = null;
-        String filename = "./trainingData/" + dtf.format(now) + ".trainingdata";
+        String filename = "./trainingData/" + this.getClass().getSimpleName() + dtf.format(now) + ".trainingdata";
         try {
             oos = new ObjectOutputStream(new FileOutputStream(filename));
         } catch (IOException e1) {
