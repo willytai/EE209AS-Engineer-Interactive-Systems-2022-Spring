@@ -1,3 +1,4 @@
 # EE209AS-Engineer-Interactive-Systems-2022-Spring
 
-To run: `./run.sh`
+To compile: `./compile.sh`
+To runL `./run.sh`
