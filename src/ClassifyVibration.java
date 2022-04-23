@@ -3,6 +3,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.FileNotFoundException;
+
 import processing.core.PApplet;
 import processing.sound.AudioIn;
 import processing.sound.FFT;
@@ -12,6 +19,12 @@ import processing.sound.Waveform;
 /* A class with the main function and Processing visualizations to run the demo */
 
 public class ClassifyVibration extends PApplet {
+	// Set consts
+	static int DEVICE_ID = 9;
+	static int DISPLAY_LENGTH = 50;
+	static int WINDOW_SIZE = 7;
+
+	String[] classNames = {"quiet", "rock", "paper", "scissors"};
 
 	FFT fft;
 	AudioIn in;
@@ -21,9 +34,18 @@ public class ClassifyVibration extends PApplet {
 	int count = 0;
 	float[] spectrum = new float[bands];
 	float[] fftFeatures = new float[bands];
-	String[] classNames = {"quiet", "rock", "paper", "scissor"};
 	int classIndex = 0;
 	int dataCount = 0;
+
+	String prevOutput = "";
+	int currCountDisplay = 0;
+	List<String> windowList = new ArrayList<>();
+	Map<String, Integer> windowMap = new HashMap<>();
+	{
+		for (String value : classNames) {
+			windowMap.put(value, 0);
+		}
+	}
 
 	MLClassifier classifier;
 	
@@ -54,7 +76,8 @@ public class ClassifyVibration extends PApplet {
 		Sound s = new Sound(this);
 		  
 		/* select microphone device */
-		s.inputDevice(3);
+		print("Using device ID: " + DEVICE_ID);
+		s.inputDevice(DEVICE_ID);
 		    
 		/* create an Input stream which is routed into the FFT analyzer */
 		fft = new FFT(this, bands);
@@ -67,12 +90,9 @@ public class ClassifyVibration extends PApplet {
 		  
 		/* patch the AudioIn */
 		fft.input(in);
-
-		frameRate(1);
 	}
 
 	public void draw() {
-	    print(count++, "\n");
 		background(0);
 		fill(0);
 		stroke(255);
@@ -103,14 +123,58 @@ public class ClassifyVibration extends PApplet {
 
 		fill(255);
 		textSize(30);
+
 		if(classifier != null) {
-			String guessedLabel = classifier.classify(captureInstance(null));
-			text("classified as: " + guessedLabel, 20, 30);
-		}else {
+			if (prevOutput != "" && currCountDisplay < DISPLAY_LENGTH) {
+				// If non-quiet output and still in display mode
+				currCountDisplay += 1;
+				text("classified as: " + prevOutput, 20, 30);
+			} else if (currCountDisplay >= DISPLAY_LENGTH) {
+				// Exceed display mode duration, reset stored window data
+				currCountDisplay = 0;
+				windowList.clear();
+				for (String value : classNames) {
+					windowMap.put(value, 0);
+				}
+				prevOutput = "";
+			} else {
+				// Predict, only display output if window length is full
+				String output = "";
+				String guessedLabel = classifier.classify(captureInstance(null));
+				windowList.add(guessedLabel);
+				windowMap.put(guessedLabel, windowMap.get(guessedLabel) + 1);
+
+				if (windowList.size() >= WINDOW_SIZE) {
+					output = getMaxKey(windowMap);
+					String oldest = windowList.get(0);
+					windowMap.put(oldest, windowMap.get(oldest)-1);
+					windowList = windowList.subList(1, windowList.size());
+
+					// persist non-quiet output for DISPLAY_LENGTH
+					if (output != "quiet") {
+						prevOutput = output;
+					}
+				}
+
+				text("classified as: " + output, 20, 30);
+			}
+		} else {
 			text(classNames[classIndex], 20, 30);
 			dataCount = trainingData.get(classNames[classIndex]).size();
 			text("Data collected: " + dataCount, 20, 60);
 		}
+	}
+
+	private static String getMaxKey(Map<String,Integer> windowMap) {
+		Map.Entry<String, Integer> maxEntry = null;
+	    for (Map.Entry<String, Integer> entry : windowMap.entrySet()) {
+	        if (maxEntry == null || entry.getValue()
+	            .compareTo(maxEntry.getValue()) > 0) {
+	            maxEntry = entry;
+	        }
+    	}
+
+		return maxEntry.getKey();
 	}
 	
 	public void keyPressed() {
@@ -130,15 +194,58 @@ public class ClassifyVibration extends PApplet {
 		
 		else if (key == 's') {
 			// Yang: add code to save your trained model for later use
+			print("saving model");
+ 			try {
+ 			    saveModel(classifier, "myClassifier");
+             }
+             catch (Exception e) {
+             	print("s key pressed");
+				print(e);
+             }
 		}
 		
 		else if (key == 'l') {
 			// Yang: add code to load your previously trained model
-		}
-			
-		else {
+			try {
+ 			    classifier = loadModel("myClassifier");
+             }
+             catch (Exception e) {
+             	print("l key pressed");
+				print(e);
+             }
+		} else {
 			trainingData.get(classNames[classIndex]).add(captureInstance(classNames[classIndex]));
 		}
 	}
+
+	public static void saveModel(MLClassifier classifier, String name) throws Exception {
+		// TODO maybe store training data instead of non-serializable classifier object
+		// load the classifier by retraining the model from scratch
+         ObjectOutputStream oos = null;
+         try {
+             oos = new ObjectOutputStream(new FileOutputStream("./" + name + ".model"));
+         } catch (FileNotFoundException e1) {
+             e1.printStackTrace();
+         } catch (IOException e1) {
+             e1.printStackTrace();
+         }
+         oos.writeObject(classifier.classifier);
+         oos.flush();
+         oos.close();
+     }
+
+     private static MLClassifier loadModel(String name) throws Exception {
+
+	     MLClassifier classifier;
+
+	     FileInputStream fis = new FileInputStream("./" + name + ".model");
+	     ObjectInputStream ois = new ObjectInputStream(fis);
+
+	     classifier = (MLClassifier) ois.readObject();
+	     ois.close();
+
+	     return classifier;
+	 }
+
 
 }
