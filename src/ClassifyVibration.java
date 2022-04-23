@@ -1,16 +1,7 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
-
-import java.io.ObjectOutputStream;
-import java.io.ObjectInputStream;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.FileNotFoundException;
 
 import processing.core.PApplet;
 import processing.sound.AudioIn;
@@ -29,14 +20,13 @@ public class ClassifyVibration extends PApplet {
 
     String tempTrainingData;
 
-    String[] classNames = {"quiet", "rock", "paper", "scissors"};
+    String[] classNames;
 
     FFT fft;
     AudioIn in;
     Waveform waveform;
     int bands = 512;
     int nsamples = 1024 * 30;
-    int count = 0;
     float[] spectrum = new float[bands];
     float[] fftFeatures = new float[bands];
     int classIndex = 0;
@@ -48,21 +38,11 @@ public class ClassifyVibration extends PApplet {
     List<String> windowList = new ArrayList<>();
     Map<String, Integer> windowMap = new HashMap<>();
 
-    {
-        for (String value : classNames) {
-            windowMap.put(value, 0);
-        }
-    }
 
     MLClassifier classifier;
 
     Map<String, List<DataInstance>> trainingData = new HashMap<>();
 
-    {
-        for (String className : classNames) {
-            trainingData.put(className, new ArrayList<DataInstance>());
-        }
-    }
 
     DataInstance captureInstance(String label) {
         DataInstance res = new DataInstance();
@@ -80,7 +60,8 @@ public class ClassifyVibration extends PApplet {
     }
 
     public void setup() {
-
+        classNames = setClassNames();
+        loadClasses(classNames);
         /* list all audio devices */
         Sound.list();
         Sound s = new Sound(this);
@@ -134,7 +115,7 @@ public class ClassifyVibration extends PApplet {
         textSize(30);
 
         if (classifier != null) {
-            if (prevOutput != "" && currCountDisplay < DISPLAY_LENGTH) {
+            if (!prevOutput.equals("") && currCountDisplay < DISPLAY_LENGTH) {
                 // If non-quiet output and still in display mode
                 currCountDisplay += 1;
                 text("classified as: " + prevOutput, 20, 30);
@@ -160,7 +141,7 @@ public class ClassifyVibration extends PApplet {
                     windowList = windowList.subList(1, windowList.size());
 
                     // persist non-quiet output for DISPLAY_LENGTH
-                    if (output != "quiet") {
+                    if (!output.equals("quiet")) {
                         prevOutput = output;
                     }
                 }
@@ -174,7 +155,7 @@ public class ClassifyVibration extends PApplet {
         }
     }
 
-    private static String getMaxKey(Map<String, Integer> windowMap) {
+    public static String getMaxKey(Map<String, Integer> windowMap) {
         Map.Entry<String, Integer> maxEntry = null;
         for (Map.Entry<String, Integer> entry : windowMap.entrySet()) {
             if (maxEntry == null || entry.getValue()
@@ -183,6 +164,7 @@ public class ClassifyVibration extends PApplet {
             }
         }
 
+        assert maxEntry != null;
         return maxEntry.getKey();
     }
 
@@ -222,8 +204,6 @@ public class ClassifyVibration extends PApplet {
     }
 
     public void saveModel(Map<String, List<DataInstance>> trainingData) throws Exception {
-        // TODO maybe store training data instead of non-serializable classifier object
-        // load the classifier by retraining the model from scratch
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss");
         LocalDateTime now = LocalDateTime.now();
 
@@ -231,11 +211,10 @@ public class ClassifyVibration extends PApplet {
         String filename = "./trainingData/" + dtf.format(now) + ".trainingdata";
         try {
             oos = new ObjectOutputStream(new FileOutputStream(filename));
-        } catch (FileNotFoundException e1) {
-            e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
+        assert oos != null;
         oos.writeObject(trainingData);
         oos.flush();
         oos.close();
@@ -243,10 +222,10 @@ public class ClassifyVibration extends PApplet {
         tempTrainingData = filename;
     }
 
-    private Map<String, List<DataInstance>> loadModel(String filename) throws Exception {
+    public Map<String, List<DataInstance>> loadModel(String filename) throws Exception {
         Map<String, List<DataInstance>> trainingData;
 
-        if (filename == null || filename == "") {
+        if (filename == null || filename.equals("")) {
             filename = tempTrainingData;
         }
 
@@ -259,5 +238,16 @@ public class ClassifyVibration extends PApplet {
         return trainingData;
     }
 
+    public String[] setClassNames() {
+        return new String[]{"quiet", "rock", "paper"};
+    }
+    public void loadClasses(String[] classNames) {
+        for (String value : classNames) {
+            windowMap.put(value, 0);
+        }
 
+        for (String className : classNames) {
+            trainingData.put(className, new ArrayList<>());
+        }
+    }
 }
