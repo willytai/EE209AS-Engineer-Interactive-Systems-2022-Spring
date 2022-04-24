@@ -13,16 +13,16 @@ import processing.sound.Waveform;
 
 public class ClassifyVibration extends PApplet {
     // Set consts
-    static int DEVICE_ID = 9;
+    static int DEVICE_ID = 11;
     static int DISPLAY_LENGTH = 50;
     static int WINDOW_SIZE = 7;
     public String setTrainingDataFilename() { // Uses tempTrainingData if not defined
-        return "";
+        return "./trainingData/ClassifyVibration_2022_04_24_11_35_47.trainingdata";
 //        return "./trainingData/ClassifyVibration_2022_04_23_16_33_24.trainingdata";
     }
 
     public String[] setClassNames() {
-        return new String[]{"quiet", "rock", "paper"};
+        return new String[]{"quiet", "rock", "scissors"};
     }
 
     String tempTrainingData;

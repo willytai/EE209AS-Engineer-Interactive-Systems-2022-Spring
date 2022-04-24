@@ -18,7 +18,7 @@ public class RockPaperScissors extends ClassifyVibration {
 
     @Override
     public String setTrainingDataFilename() { // Uses tempTrainingData if not defined
-        return "";
+        return "./trainingData/RockPaperScissors_2022_04_24_11_21_21.trainingdata";
 //        return "./trainingData/RockPaperScissors_2022_04_23_16_23_09.trainingdata";
     }
 
